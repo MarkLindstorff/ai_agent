@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 from prompts import system_prompt
-from call_function import available_functions
+from call_function import available_functions, call_function
 
 load_dotenv()
 
@@ -39,10 +39,32 @@ def main():
         print(f"Response tokens: {response.usage_metadata.candidates_token_count}")
     
     if response.function_calls:
-        for function_call in response.function_calls:
-            print(f"Calling function: {function_call.name}({function_call.args})")
-    else:
-        print(f"Response:\n{response.text}")
+        function_responses = []
+        for function_call_obj in response.function_calls:
+            result = call_function(function_call_obj, args.verbose)
 
+            if (
+                not result.parts
+                or not result.parts[0].function_response
+                or not result.parts[0].function_response.response
+            ):
+                raise RuntimeError(f"Empty function response for {function_call_obj.name}")
+            
+            function_responses.append(result.parts[0])
+
+            if args.verbose:
+                print(f"-> {result.parts[0].function_response.response}")
+
+    else:
+        print(f"Response:\n{response.text}\n")
+
+
+
+##    if response.function_calls:
+##        for function_call in response.function_calls:
+##            print(f"Calling function: {function_call.name}({function_call.args})")
+##    else:
+##        print(f"Response:\n{response.text}")
+        
 if __name__ == "__main__":
     main()
